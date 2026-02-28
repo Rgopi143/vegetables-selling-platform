@@ -147,7 +147,7 @@ The project is pre-configured for deployment on Render.com. See [DEPLOYMENT.md](
 
 ## 🌐 Live Demo
 
-The application is deployed and available at: **[Your Render URL will appear here after deployment]**
+The application is deployed and available at: **[https://vegetables-selling-platform.onrender.com]**
 
 ## 🤝 Contributing
 
