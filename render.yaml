@@ -3,9 +3,11 @@ services:
   - type: web
     name: vegetable-selling-platform
     env: static
-    buildCommand: npm run build
+    buildCommand: ./render-build.sh
     staticPublishPath: dist
     pullRequestPreviewsEnabled: true
+    autoDeploy: true
+    healthCheckPath: /
     headers:
       - path: /*
         name: X-Frame-Options
@@ -16,7 +18,27 @@ services:
       - path: /*
         name: X-XSS-Protection
         value: 1; mode=block
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+      - type: file
+        source: /static/*
+        destination: /static/
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_APP_NAME
+        value: Vegetable Selling Platform
+      - key: VITE_APP_VERSION
+        value: 1.0.0
+      - key: VITE_ENABLE_ANALYTICS
+        value: false
+      - key: VITE_ENABLE_DEBUG
+        value: false
