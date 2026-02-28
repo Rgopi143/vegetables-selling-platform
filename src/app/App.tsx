@@ -2,12 +2,13 @@ import { useState } from "react";
 import { BuyerDashboard } from "./components/buyer-dashboard";
 import { SellerDashboard } from "./components/seller-dashboard";
 import { AdminDashboard } from "./components/admin-dashboard";
+import { Documentation } from "./components/documentation";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./components/ui/card";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Toaster } from "./components/ui/sonner";
-import { User, Store, Shield, Mail } from "lucide-react";
+import { User, Store, Shield, Mail, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -26,6 +27,7 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [isSignupMode, setIsSignupMode] = useState(false);
+  const [showDocumentation, setShowDocumentation] = useState(false);
   const [signupType, setSignupType] = useState<"buyer" | "seller" | null>(null);
   const [signupData, setSignupData] = useState({
     name: "",
@@ -114,7 +116,7 @@ export default function App() {
       name: "Fresh Bell Peppers",
       price: 55,
       unit: "kg",
-      image: "https://images.unsplash.com/photo-1757332334667-d2e75d5816ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHBlcHBlcnN8ZW58MXx8fHwxNzY3MDIyOTY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      image: "https://images.unsplash.com/photo-1757332334667-d2e75d5816ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHBlcHBlcnJvdHN8ZW58MXx8fHwxNzY3MDIyOTY2fDA&ixlib=rb-4.1.0&q=80&w=1080",
       seller: "Fresh Produce Co.",
       stock: "Out of Stock"
     }
@@ -128,6 +130,16 @@ export default function App() {
     setProducts([...products, newProduct]);
   };
 
+  const handleDeleteProduct = (productId: number) => {
+    setProducts(products.filter(product => product.id !== productId));
+  };
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts(products.map(product => 
+      product.id === updatedProduct.id ? updatedProduct : product
+    ));
+  };
+
   const handleLogin = () => {
     if (!loginEmail || !loginPassword) {
       toast.error("Please enter both email and password");
@@ -139,16 +151,16 @@ export default function App() {
       setCurrentRole("buyer");
       setUserEmail(loginEmail);
       toast.success("Welcome Buyer!");
-    } else if (loginEmail.endsWith("@seller.com")) {
+    } else if (loginEmail.endsWith("@veggistore.com")) {
       setCurrentRole("seller");
       setUserEmail(loginEmail);
       toast.success("Welcome Seller!");
-    } else if (loginEmail.endsWith("@admin.com")) {
+    } else if (loginEmail.endsWith("@ranbidge.com")) {
       setCurrentRole("admin");
       setUserEmail(loginEmail);
       toast.success("Welcome Admin!");
     } else {
-      toast.error("Invalid email domain. Use @gmail.com, @seller.com, or @admin.com");
+      toast.error("Invalid email domain. Use @gmail.com, @veggistore.com, or @ranbidge.com");
       return;
     }
   };
@@ -178,8 +190,8 @@ export default function App() {
       return;
     }
 
-    if (signupType === "seller" && !signupData.email.endsWith("@seller.com")) {
-      toast.error("Seller email must end with @seller.com");
+    if (signupType === "seller" && !signupData.email.endsWith("@veggistore.com")) {
+      toast.error("Seller email must end with @veggistore.com");
       return;
     }
 
@@ -245,7 +257,7 @@ export default function App() {
                 Create {signupType === "buyer" ? "Buyer" : "Seller"} Account
               </CardTitle>
               <CardDescription>
-                Email must end with {signupType === "buyer" ? "@gmail.com" : "@seller.com"}
+                Email must end with {signupType === "buyer" ? "@gmail.com" : "@veggistore.com"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -268,7 +280,7 @@ export default function App() {
                     type="email"
                     value={signupData.email}
                     onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                    placeholder={signupType === "buyer" ? "yourname@gmail.com" : "yourname@seller.com"}
+                    placeholder={signupType === "buyer" ? "yourname@gmail.com" : "yourname@veggistore.com"}
                     className="pl-10"
                   />
                 </div>
@@ -398,7 +410,7 @@ export default function App() {
                 <div>
                   <p className="font-semibold">Seller Account</p>
                   <p className="text-sm text-gray-500">List products and manage orders</p>
-                  <p className="text-xs text-gray-400">Email: @seller.com</p>
+                  <p className="text-xs text-gray-400">Email: @veggistore.com</p>
                 </div>
               </Button>
 
@@ -436,7 +448,7 @@ export default function App() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="your.email@gmail.com"
+                    placeholder="your.email@gmail.com / @veggistore.com / @ranbidge.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="pl-10"
@@ -463,21 +475,20 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Create New Account</span>
-                </div>
-              </div>
-
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => setIsSignupMode(true)}
               >
                 New Account Registration
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowDocumentation(true)}
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                View Documentation
               </Button>
             </div>
           </CardContent>
@@ -494,10 +505,13 @@ export default function App() {
         <BuyerDashboard products={products} onLogout={handleLogout} />
       )}
       {currentRole === "seller" && (
-        <SellerDashboard onAddProduct={handleAddProduct} onLogout={handleLogout} />
+        <SellerDashboard onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateProduct={handleUpdateProduct} onLogout={handleLogout} products={products} />
       )}
       {currentRole === "admin" && (
         <AdminDashboard onLogout={handleLogout} allProducts={products} />
+      )}
+      {currentRole === null && showDocumentation && (
+        <Documentation onClose={() => setShowDocumentation(false)} />
       )}
       <Toaster />
     </>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Bell, Package, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Plus, Bell, Package, CheckCircle, XCircle, AlertTriangle, Edit, Trash2, RefreshCw, Menu, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -15,59 +15,33 @@ interface Product {
   price: number;
   unit: string;
   image: string;
+  seller: string;
   stock: string;
-}
-
-interface Order {
-  id: number;
-  productName: string;
-  buyer: string;
-  quantity: number;
-  total: number;
-  status: "pending" | "approved" | "cancelled" | "outofstock";
-  date: string;
 }
 
 interface SellerDashboardProps {
   onAddProduct: (product: Omit<Product, "id">) => void;
+  onDeleteProduct: (productId: number) => void;
+  onUpdateProduct: (product: Product) => void;
   onLogout: () => void;
+  products: Product[];
 }
 
-export function SellerDashboard({ onAddProduct, onLogout }: SellerDashboardProps) {
+export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct, onLogout, products }: SellerDashboardProps) {
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; productId: number | null; productName: string }>({
+    show: false,
+    productId: null,
+    productName: ""
+  });
   const [notifications, setNotifications] = useState<string[]>([
-    "New order received for Tomatoes",
-    "Order #102 has been delivered",
-    "Low stock alert for Potatoes"
-  ]);
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: 101,
-      productName: "Tomatoes",
-      buyer: "John Doe",
-      quantity: 2,
-      total: 80,
-      status: "pending",
-      date: "2025-12-29"
-    },
-    {
-      id: 102,
-      productName: "Potatoes",
-      buyer: "Jane Smith",
-      quantity: 5,
-      total: 150,
-      status: "pending",
-      date: "2025-12-29"
-    },
-    {
-      id: 103,
-      productName: "Onions",
-      buyer: "Mike Johnson",
-      quantity: 3,
-      total: 90,
-      status: "approved",
-      date: "2025-12-28"
-    }
+    "New product added successfully",
+    "Low stock alert for Potatoes",
+    "Product listing approved"
   ]);
 
   const [newProduct, setNewProduct] = useState({
@@ -98,28 +72,84 @@ export function SellerDashboard({ onAddProduct, onLogout }: SellerDashboardProps
     toast.success("Product added successfully!");
   };
 
-  const updateOrderStatus = (orderId: number, status: Order["status"]) => {
-    setOrders(orders.map(order =>
-      order.id === orderId ? { ...order, status } : order
-    ));
-    
-    let message = "";
-    switch (status) {
-      case "approved":
-        message = "Order approved successfully!";
-        break;
-      case "cancelled":
-        message = "Order cancelled";
-        break;
-      case "outofstock":
-        message = "Order marked as out of stock";
-        break;
-    }
-    toast.success(message);
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setShowEditDialog(true);
   };
 
-  const pendingOrders = orders.filter(o => o.status === "pending");
-  const completedOrders = orders.filter(o => o.status !== "pending");
+  const handleUpdateProduct = () => {
+    if (!editingProduct) return;
+    
+    onUpdateProduct(editingProduct);
+    toast.success(`${editingProduct.name} updated successfully!`);
+    setShowEditDialog(false);
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = (productId: number, productName: string) => {
+    setDeleteConfirm({
+      show: true,
+      productId,
+      productName
+    });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.productId !== null) {
+      onDeleteProduct(deleteConfirm.productId);
+      toast.success(`${deleteConfirm.productName} deleted successfully!`);
+      setDeleteConfirm({ show: false, productId: null, productName: "" });
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({ show: false, productId: null, productName: "" });
+  };
+
+  const handleUpdateMarketRates = () => {
+    // Simulate market rate updates with random price changes
+    const marketRates = [
+      { name: "Fresh Tomatoes", basePrice: 40, variance: 5 },
+      { name: "Fresh Potatoes", basePrice: 30, variance: 3 },
+      { name: "Fresh Onions", basePrice: 35, variance: 4 },
+      { name: "Fresh Carrots", basePrice: 45, variance: 6 },
+      { name: "Fresh Cabbage", basePrice: 25, variance: 2 },
+      { name: "Fresh Spinach", basePrice: 50, variance: 8 },
+      { name: "Fresh Broccoli", basePrice: 60, variance: 10 },
+      { name: "Fresh Bell Peppers", basePrice: 55, variance: 7 }
+    ];
+
+    const updatedProducts = products.map(product => {
+      const marketRate = marketRates.find(rate => rate.name === product.name);
+      if (marketRate) {
+        // Generate random price within variance range
+        const variance = (Math.random() - 0.5) * 2 * marketRate.variance;
+        const newPrice = Math.max(10, Math.round(marketRate.basePrice + variance));
+        
+        return {
+          ...product,
+          price: newPrice
+        };
+      }
+      return product;
+    });
+
+    // Update all products with new market rates
+    updatedProducts.forEach(product => {
+      onUpdateProduct(product);
+    });
+
+    // Add notification about market rate update
+    const currentTime = new Date().toLocaleTimeString();
+    setNotifications(prev => [
+      `Market rates updated at ${currentTime}`,
+      ...prev.slice(0, 4)
+    ]);
+
+    toast.success("Daily market rates updated successfully!");
+  };
+
+  const activeListings = products.filter(p => p.stock === "In Stock").length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,20 +159,78 @@ export function SellerDashboard({ onAddProduct, onLogout }: SellerDashboardProps
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-green-600">Seller Dashboard</h1>
-              <p className="text-sm text-gray-500">Manage your products and orders</p>
+              <p className="text-sm text-gray-500">Manage your products</p>
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" className="relative">
-                <Bell className="w-5 h-5" />
+            
+            {/* Mobile Menu Button */}
+            <div className="sm:hidden">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+              >
+                {showMobileMenu ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </Button>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden sm:flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+              <Button 
+                variant={editMode ? "default" : "outline"} 
+                onClick={() => setEditMode(!editMode)}
+                className={editMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                size="sm"
+              >
+                <Edit className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Edit Mode</span>
+                <span className="sm:hidden">Edit</span>
+              </Button>
+              <Button variant="outline" className="relative" size="sm">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {notifications.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 bg-red-500">
+                  <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
                     {notifications.length}
                   </Badge>
                 )}
               </Button>
-              <Button onClick={onLogout}>Logout</Button>
+              <Button onClick={onLogout} size="sm">
+                <span className="hidden sm:inline">Logout</span>
+                <span className="sm:hidden">Out</span>
+              </Button>
             </div>
           </div>
+
+          {/* Mobile Menu */}
+          {showMobileMenu && (
+            <div className="sm:hidden border-t pt-4 mt-4">
+              <div className="flex flex-col gap-2">
+                <Button 
+                  variant={editMode ? "default" : "outline"} 
+                  onClick={() => {
+                    setEditMode(!editMode);
+                    setShowMobileMenu(false);
+                  }}
+                  className={editMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  size="sm"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Mode
+                </Button>
+                <Button variant="outline" className="relative justify-start" size="sm">
+                  <Bell className="w-4 h-4 mr-2" />
+                  Notifications
+                  {notifications.length > 0 && (
+                    <Badge className="ml-auto w-5 h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
+                      {notifications.length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button onClick={onLogout} size="sm" className="justify-start">
+                  Logout
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -150,173 +238,210 @@ export function SellerDashboard({ onAddProduct, onLogout }: SellerDashboardProps
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Pending Orders</CardTitle>
+              <CardTitle className="text-sm">Total Products</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{pendingOrders.length}</div>
+              <div className="text-3xl font-bold">{products.length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Total Orders</CardTitle>
+              <CardTitle className="text-sm">Active Listings</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{orders.length}</div>
+              <div className="text-3xl font-bold">{activeListings}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Total Revenue</CardTitle>
+              <CardTitle className="text-sm">Notifications</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
-                ₹{orders.reduce((sum, o) => sum + o.total, 0)}
-              </div>
+              <div className="text-3xl font-bold">{notifications.length}</div>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="orders" className="space-y-6">
+        <Tabs defaultValue="products" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="orders" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Order Management</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-3">Pending Orders</h3>
-                {pendingOrders.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-gray-500">
-                      No pending orders
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingOrders.map((order) => (
-                      <Card key={order.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <Package className="w-5 h-5 text-gray-400" />
-                                <div>
-                                  <p className="font-semibold">Order #{order.id}</p>
-                                  <p className="text-sm text-gray-500">
-                                    {order.productName} - {order.quantity} units
-                                  </p>
-                                  <p className="text-sm text-gray-500">Buyer: {order.buyer}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right mr-4">
-                              <p className="font-bold">₹{order.total}</p>
-                              <p className="text-sm text-gray-500">{order.date}</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => updateOrderStatus(order.id, "approved")}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateOrderStatus(order.id, "outofstock")}
-                              >
-                                <AlertTriangle className="w-4 h-4 mr-1" />
-                                Out of Stock
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => updateOrderStatus(order.id, "cancelled")}
-                              >
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Completed Orders</h3>
-                {completedOrders.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-gray-500">
-                      No completed orders
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {completedOrders.map((order) => (
-                      <Card key={order.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <Package className="w-5 h-5 text-gray-400" />
-                                <div>
-                                  <p className="font-semibold">Order #{order.id}</p>
-                                  <p className="text-sm text-gray-500">
-                                    {order.productName} - {order.quantity} units
-                                  </p>
-                                  <p className="text-sm text-gray-500">Buyer: {order.buyer}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right mr-4">
-                              <p className="font-bold">₹{order.total}</p>
-                              <p className="text-sm text-gray-500">{order.date}</p>
-                            </div>
-                            <Badge
-                              variant={
-                                order.status === "approved"
-                                  ? "default"
-                                  : order.status === "cancelled"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                            >
-                              {order.status}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+          <TabsContent value="products" className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-bold">Product Management</h2>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={handleUpdateMarketRates} size="sm" className="w-full sm:w-auto">
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Update Market Rates</span>
+                  <span className="sm:hidden">Update Rates</span>
+                </Button>
+                <Button onClick={() => setShowAddProduct(true)} size="sm" className="w-full sm:w-auto">
+                  <Plus className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Add Product</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="products">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">My Products</h2>
-              <Button onClick={() => setShowAddProduct(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Product
-              </Button>
+            {/* Products List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {products.map((product) => (
+                <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="aspect-square mb-4 overflow-hidden rounded-lg">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-2xl font-bold text-green-600">₹{product.price}</span>
+                      <span className="text-sm text-gray-500">{product.unit}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Badge className={product.stock === "In Stock" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                        {product.stock}
+                      </Badge>
+                      <div className="flex gap-2">
+                        {editMode && (
+                          <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.id, product.name)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <Card>
-              <CardContent className="py-8 text-center text-gray-500">
-                Your products will appear here
-              </CardContent>
-            </Card>
+
+            {/* Add Product Dialog */}
+            <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Product</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="productName">Product Name</Label>
+                    <Input
+                      id="productName"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      placeholder="Enter product name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="productPrice">Price (₹)</Label>
+                    <Input
+                      id="productPrice"
+                      type="number"
+                      value={newProduct.price}
+                      onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                      placeholder="Enter price"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="productImage">Image URL</Label>
+                    <Input
+                      id="productImage"
+                      value={newProduct.image}
+                      onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowAddProduct(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddProduct}>
+                    Add Product
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Product Dialog */}
+            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Product</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editProductName">Product Name</Label>
+                    <Input
+                      id="editProductName"
+                      value={editingProduct?.name || ""}
+                      onChange={(e) => setEditingProduct(editingProduct ? { ...editingProduct, name: e.target.value } : null)}
+                      placeholder="Enter product name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editProductPrice">Price (₹)</Label>
+                    <Input
+                      id="editProductPrice"
+                      type="number"
+                      value={editingProduct?.price || ""}
+                      onChange={(e) => setEditingProduct(editingProduct ? { ...editingProduct, price: parseFloat(e.target.value) } : null)}
+                      placeholder="Enter price"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editProductUnit">Unit</Label>
+                    <Input
+                      id="editProductUnit"
+                      value={editingProduct?.unit || ""}
+                      onChange={(e) => setEditingProduct(editingProduct ? { ...editingProduct, unit: e.target.value } : null)}
+                      placeholder="e.g., kg, piece"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editProductImage">Image URL</Label>
+                    <Input
+                      id="editProductImage"
+                      value={editingProduct?.image || ""}
+                      onChange={(e) => setEditingProduct(editingProduct ? { ...editingProduct, image: e.target.value } : null)}
+                      placeholder="https://..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="editProductStock">Stock Status</Label>
+                    <select
+                      id="editProductStock"
+                      value={editingProduct?.stock || "In Stock"}
+                      onChange={(e) => setEditingProduct(editingProduct ? { ...editingProduct, stock: e.target.value } : null)}
+                      className="w-full border rounded-md p-2"
+                    >
+                      <option value="In Stock">In Stock</option>
+                      <option value="Out of Stock">Out of Stock</option>
+                    </select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleUpdateProduct}>
+                    Update Product
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="notifications">
@@ -335,68 +460,23 @@ export function SellerDashboard({ onAddProduct, onLogout }: SellerDashboardProps
         </Tabs>
       </main>
 
-      {/* Add Product Dialog */}
-      <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.show} onOpenChange={(open) => !open && cancelDelete()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
+            <DialogTitle>Confirm Delete</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="productName">Product Name</Label>
-              <Input
-                id="productName"
-                value={newProduct.name}
-                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                placeholder="e.g., Fresh Tomatoes"
-              />
-            </div>
-            <div>
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                type="number"
-                value={newProduct.price}
-                onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                placeholder="e.g., 40"
-              />
-            </div>
-            <div>
-              <Label htmlFor="unit">Unit</Label>
-              <Input
-                id="unit"
-                value={newProduct.unit}
-                onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                placeholder="e.g., kg, piece"
-              />
-            </div>
-            <div>
-              <Label htmlFor="image">Image URL</Label>
-              <Input
-                id="image"
-                value={newProduct.image}
-                onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="stock">Stock Status</Label>
-              <select
-                id="stock"
-                value={newProduct.stock}
-                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                className="w-full border rounded-md p-2"
-              >
-                <option value="In Stock">In Stock</option>
-                <option value="Out of Stock">Out of Stock</option>
-              </select>
-            </div>
+            <p>Are you sure you want to delete <strong>{deleteConfirm.productName}</strong>?</p>
+            <p className="text-sm text-gray-500">This action cannot be undone.</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddProduct(false)}>
+            <Button variant="outline" onClick={cancelDelete}>
               Cancel
             </Button>
-            <Button onClick={handleAddProduct}>Add Product</Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
