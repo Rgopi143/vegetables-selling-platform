@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { toast } from "sonner";
 
 interface Product {
@@ -19,15 +20,29 @@ interface Product {
   stock: string;
 }
 
+interface SellerStats {
+  id: string;
+  seller_id: string;
+  total_orders: number;
+  total_revenue: number;
+  total_products: number;
+  average_rating: number;
+  last_updated: string;
+}
+
 interface SellerDashboardProps {
   onAddProduct: (product: Omit<Product, "id">) => void;
   onDeleteProduct: (productId: number) => void;
   onUpdateProduct: (product: Product) => void;
   onLogout: () => void;
   products: Product[];
+  sellerStats: SellerStats | null;
 }
 
-export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct, onLogout, products }: SellerDashboardProps) {
+export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct, onLogout, products, sellerStats }: SellerDashboardProps) {
+  console.log('SellerDashboard render - products:', products);
+  console.log('SellerDashboard render - products length:', products.length);
+  
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -38,38 +53,65 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
     productId: null,
     productName: ""
   });
-  const [notifications, setNotifications] = useState<string[]>([
-    "New product added successfully",
-    "Low stock alert for Potatoes",
-    "Product listing approved"
+
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const [notifications] = useState([
+    {
+      id: 1,
+      title: "New Order Received",
+      message: "You have received a new order for Fresh Tomatoes",
+      time: "2 minutes ago",
+      type: "order"
+    },
+    {
+      id: 2,
+      title: "Low Stock Alert",
+      message: "Fresh Spinach stock is running low (30 kg remaining)",
+      time: "1 hour ago",
+      type: "warning"
+    },
+    {
+      id: 3,
+      title: "Product Approved",
+      message: "Your product listing for Fresh Broccoli has been approved",
+      time: "3 hours ago",
+      type: "success"
+    }
   ]);
 
   const [newProduct, setNewProduct] = useState({
-    name: "",
-    price: "",
+    name: "Fresh Cauliflower",
+    price: "45",
     unit: "kg",
-    image: "",
+    image: "https://th.bing.com/th/id/OIP.mrQpA0QUrP80zYDNumav-QHaE8?w=270&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3",
     stock: "In Stock"
   });
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.image) {
       toast.error("Please fill all fields");
       return;
     }
 
-    onAddProduct({
-      name: newProduct.name,
-      price: parseFloat(newProduct.price),
-      unit: newProduct.unit,
-      image: newProduct.image,
-      seller: "Current Seller",
-      stock: newProduct.stock
-    });
+    try {
+      await onAddProduct({
+        name: newProduct.name,
+        price: parseFloat(newProduct.price),
+        unit: newProduct.unit,
+        image: newProduct.image,
+        seller: "Current Seller",
+        stock: newProduct.stock
+      });
 
-    setNewProduct({ name: "", price: "", unit: "kg", image: "", stock: "In Stock" });
-    setShowAddProduct(false);
-    toast.success("Product added successfully!");
+      // Only reset form and close dialog after successful addition
+      setNewProduct({ name: "", price: "", unit: "kg", image: "", stock: "In Stock" });
+      setShowAddProduct(false);
+      toast.success("Product added successfully!");
+    } catch (error) {
+      console.error('Error adding product:', error);
+      toast.error("Failed to add product");
+    }
   };
 
   const handleEditProduct = (product: Product) => {
@@ -139,13 +181,6 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
       onUpdateProduct(product);
     });
 
-    // Add notification about market rate update
-    const currentTime = new Date().toLocaleTimeString();
-    setNotifications(prev => [
-      `Market rates updated at ${currentTime}`,
-      ...prev.slice(0, 4)
-    ]);
-
     toast.success("Daily market rates updated successfully!");
   };
 
@@ -185,13 +220,11 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
                 <span className="hidden sm:inline">Edit Mode</span>
                 <span className="sm:hidden">Edit</span>
               </Button>
-              <Button variant="outline" className="relative" size="sm">
+              <Button variant="outline" className="relative" size="sm" onClick={() => setShowNotifications(true)}>
                 <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                {notifications.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
-                    {notifications.length}
-                  </Badge>
-                )}
+                <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
+                  {notifications.length}
+                </Badge>
               </Button>
               <Button onClick={onLogout} size="sm">
                 <span className="hidden sm:inline">Logout</span>
@@ -219,11 +252,9 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
                 <Button variant="outline" className="relative justify-start" size="sm">
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
-                  {notifications.length > 0 && (
-                    <Badge className="ml-auto w-5 h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
-                      {notifications.length}
-                    </Badge>
-                  )}
+                  <Badge className="ml-auto w-5 h-5 flex items-center justify-center p-0 bg-red-500 text-xs">
+                    3
+                  </Badge>
                 </Button>
                 <Button onClick={onLogout} size="sm" className="justify-start">
                   Logout
@@ -235,29 +266,37 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Total Products</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{products.length}</div>
+              <div className="text-3xl font-bold">{sellerStats?.total_products || products.length}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Active Listings</CardTitle>
+              <CardTitle className="text-sm">Total Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{activeListings}</div>
+              <div className="text-3xl font-bold">{sellerStats?.total_orders || 0}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Notifications</CardTitle>
+              <CardTitle className="text-sm">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{notifications.length}</div>
+              <div className="text-3xl font-bold">₹{sellerStats?.total_revenue?.toFixed(2) || "0.00"}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Average Rating</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{sellerStats?.average_rating?.toFixed(1) || "0.0"}⭐</div>
             </CardContent>
           </Card>
         </div>
@@ -265,7 +304,6 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
         <Tabs defaultValue="products" className="space-y-6">
           <TabsList>
             <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products" className="space-y-4">
@@ -287,7 +325,11 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
 
             {/* Products List */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => (
+              {(() => {
+                console.log('Rendering products in grid:', products.length);
+                return products.map((product) => {
+                  console.log('Rendering product:', product);
+                  return (
                 <Card key={product.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-4">
                     <div className="aspect-square mb-4 overflow-hidden rounded-lg">
@@ -319,7 +361,9 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                  );
+                });
+              })()}
             </div>
 
             {/* Add Product Dialog */}
@@ -443,20 +487,6 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
               </DialogContent>
             </Dialog>
           </TabsContent>
-
-          <TabsContent value="notifications">
-            <h2 className="text-xl font-bold mb-6">Notifications</h2>
-            <div className="space-y-3">
-              {notifications.map((notif, idx) => (
-                <Card key={idx}>
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-blue-500" />
-                    <p>{notif}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
         </Tabs>
       </main>
 
@@ -480,6 +510,40 @@ export function SellerDashboard({ onAddProduct, onDeleteProduct, onUpdateProduct
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Notifications Drawer */}
+      <Sheet open={showNotifications} onOpenChange={setShowNotifications}>
+        <SheetContent className="w-96 p-0">
+          <SheetHeader className="p-6 border-b">
+            <SheetTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Notifications
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-4">
+              {notifications.map((notification) => (
+                <Card key={notification.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+                        notification.type === 'order' ? 'bg-blue-500' :
+                        notification.type === 'warning' ? 'bg-yellow-500' :
+                        'bg-green-500'
+                      }`}></div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm">{notification.title}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                        <p className="text-xs text-gray-400 mt-2">{notification.time}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

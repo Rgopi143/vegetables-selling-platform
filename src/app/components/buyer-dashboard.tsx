@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MapPin, Bell, ShoppingCart, User } from "lucide-react";
+import { Search, MapPin, ShoppingCart, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -22,12 +22,34 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'order' | 'product' | 'system';
+  is_read: boolean;
+  metadata: any;
+  created_at: string;
+}
+
+interface Review {
+  id: string;
+  product_id: string;
+  buyer_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
 interface BuyerDashboardProps {
   products: Product[];
+  notifications: Notification[];
+  reviews: Review[];
   onLogout: () => void;
 }
 
-export function BuyerDashboard({ products, onLogout }: BuyerDashboardProps) {
+export function BuyerDashboard({ products, notifications, reviews, onLogout }: BuyerDashboardProps) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
@@ -128,12 +150,6 @@ export function BuyerDashboard({ products, onLogout }: BuyerDashboardProps) {
                 <MapPin className="w-5 h-5" />
                 Location
               </Button>
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 bg-red-500">
-                  3
-                </Badge>
-              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -172,6 +188,31 @@ export function BuyerDashboard({ products, onLogout }: BuyerDashboardProps) {
                 </div>
                 <h3 className="font-semibold">{product.name}</h3>
                 <p className="text-sm text-gray-500">Seller: {product.seller}</p>
+                
+                {/* Reviews Section */}
+                <div className="mt-2">
+                  {(() => {
+                    const productReviews = reviews.filter(r => r.product_id === `10000000-0000-0000-0000-00000000000${product.id}`);
+                    if (productReviews.length === 0) {
+                      return <p className="text-xs text-gray-400">No reviews yet</p>;
+                    }
+                    const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className={i < Math.floor(avgRating) ? "text-yellow-400" : "text-gray-300"}>
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {avgRating.toFixed(1)} ({productReviews.length})
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className="flex items-center justify-between mt-2">
                   <p className="font-bold text-lg">₹{product.price}/{product.unit}</p>
                   <Badge variant={product.stock === "In Stock" ? "default" : "destructive"}>
